@@ -24,6 +24,42 @@ CLIENT_SECRET_PATH = '/Users/cooperburden/Desktop/NS/client_secret_867110489635-
 # Set OpenAI API key from environment variable
 openai.api_key = os.getenv('OPENAI_API_KEY')
 
+
+
+
+def get_service():
+    """Shows basic usage of the Gmail API.
+    Lists the user's Gmail labels.
+    """
+    creds = None
+    # The file token.pickle stores the user's access and refresh tokens, and is
+    # created automatically when the authorization flow completes for the first
+    # time.
+    if os.path.exists('token.pickle'):
+        with open('token.pickle', 'rb') as token:
+            creds = pickle.load(token)
+    # If there are no (valid) credentials available, let the user log in.
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                'credentials.json', SCOPES)
+            creds = flow.run_local_server(port=8080)
+        # Save the credentials for the next run
+        with open('token.pickle', 'wb') as token:
+            pickle.dump(creds, token)
+
+    # Build the service
+    service = build('gmail', 'v1', credentials=creds)
+    return service
+
+
+
+
+
+
+
 def authenticate_gmail():
     creds = None
     try:
@@ -160,36 +196,29 @@ def send_email(service, message_id, response, sender_email):
 
 
 
-# this is a list view of all of the emails, and a snippet of the draft that was written.
+## this is a list view of all of the emails, and a snippet of the draft that was written.
 def list_drafts(service):
-    try:
-        # Fetch drafts
-        results = service.users().drafts().list(userId='me').execute()
-        drafts = results.get('drafts', [])
-        
-        if not drafts:
-            print('No drafts found.')
-            return []
-        else:
-            draft_list = []
-            for draft in drafts:
-                # Get the full draft details using its ID
-                draft_msg = service.users().drafts().get(userId='me', id=draft['id']).execute()
-                
-                # Extract subject and snippet (body preview) from the draft
-                headers = draft_msg['message']['payload']['headers']
-                subject = next((header['value'] for header in headers if header['name'] == 'Subject'), 'No Subject')
-                snippet = draft_msg['message'].get('snippet', 'No preview available')
-                
-                draft_list.append({'id': draft['id'], 'subject': subject, 'body': snippet})
-                
-                # Print draft details (for debugging)
-                print(f"Draft Subject: {subject}\nBody: {snippet}")
-                
-            return draft_list
-    except Exception as error:
-        print(f'Error fetching drafts: {error}')
-        return []
+   try:
+       # List drafts in the user's Gmail account
+       results = service.users().messages().list(userId='me', labelIds=['DRAFT']).execute()
+       messages = results.get('messages', [])
+      
+       drafts = []
+       for message in messages:
+           msg = service.users().messages().get(userId='me', id=message['id']).execute()
+           drafts.append({
+               'id': msg['id'],
+               'subject': msg['payload']['headers'][0]['value'],  # Extract subject from headers
+               'body': msg['snippet']  # Get a snippet of the body
+           })
+      
+       return drafts
+
+
+   except Exception as e:
+       print(f"Error fetching drafts: {e}")
+       return []
+
 
 
 # this is a function to actually see the message and the AI generated message as a draft
@@ -277,6 +306,8 @@ def send_draft(service, draft_id):
         print(f'Error sending draft: {error}')
     except Exception as e:
         print(f'An unexpected error occurred: {e}')
+
+
 
 
 

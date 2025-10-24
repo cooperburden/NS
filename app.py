@@ -1,6 +1,10 @@
 from flask import Flask, request, jsonify
 import threading
-from email_ai_assistant import authenticate_gmail, list_drafts, list_messages, generate_response, send_email
+from email_ai_assistant import authenticate_gmail, list_drafts, list_messages, generate_response, send_email, get_service
+import google.auth
+from googleapiclient.discovery import build
+import re
+import socket
 
 app = Flask(__name__)
 
@@ -126,7 +130,47 @@ def edit_draft_route(draft_id):
 
 
 
+# this is all for getting the list of emails to show up in the app
+def get_gmail_service():
+    creds, _ = google.auth.default()
+    service = build('gmail', 'v1', credentials=creds)
+    return service
+
+
+
+
+# Function to clean up the subject field
+def clean_subject(subject):
+   if "from" in subject:
+       subject = subject.split('from')[0].strip()  # Extract only the actual subject part
+   return subject
+
+
+# Route to get drafts
+@app.route('/get_drafts', methods=['GET'])
+def get_drafts():
+   try:
+       service = get_service()  # Get the authenticated Gmail API service
+       drafts = list_drafts(service)  # Pass the service to the list_drafts function
+
+
+       # Clean up the subject for better readability
+       for draft in drafts:
+           draft['subject'] = clean_subject(draft['subject'])
+      
+       return jsonify(drafts)  # Return cleaned-up drafts as JSON
+  
+   except Exception as e:
+       print(f"Error fetching drafts: {e}")
+       return jsonify({"error": "Error fetching drafts", "message": str(e)}), 500
+
+
+
+
+
+
+
+
 
 if __name__ == '__main__':
-    # Run the Flask app
-    app.run(debug=True)
+    app.run(host='127.0.0.1', port=5001, debug=False, use_reloader=False)
