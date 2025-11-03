@@ -1,9 +1,18 @@
-__pycache__/
-client_secret_867110489635-uusid9grhf9opo60ld7bpui257belgds.apps.googleusercontent.com.json
-token.pickle
-token.pickle
-client_secret_*.json
+# Python cache
 __pycache__/
 *.pyc
-.env
+
+# macOS junk files
 .DS_Store
+
+# Credentials & tokens
+.env
+token.pickle
+client_secret_*.json
+
+# Local AI index caches
+faq_index.json
+site_index.json
+
+# Logs (optional, in case you add logging later)
+*.log
